@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@/contexts/AuthContext";
+import { useUser } from "@/hooks/useAuth";
 import { 
   CheckCircle, 
   BarChart2, 
@@ -25,7 +25,7 @@ import { format } from "date-fns";
 import { useState } from "react";
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user } = useUser();
   const [currentDate, setCurrentDate] = useState(new Date());
   
   // Fetch data from API
