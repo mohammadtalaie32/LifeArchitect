@@ -13,7 +13,8 @@ import {
   insertEventSchema,
   insertActivitySchema,
   insertTagSchema,
-  insertActivityTagSchema
+  insertActivityTagSchema,
+  insertUserSettingsSchema
 } from "@shared/schema";
 import session from "express-session";
 import passport from "passport";
@@ -740,5 +741,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create HTTP server
   const httpServer = createServer(app);
   
+  // User Settings routes
+  app.get("/api/user/settings", isAuthenticated, async (req, res) => {
+    const userId = (req.user as any).id;
+    const settings = await storage.getUserSettings(userId);
+    res.json(settings);
+  });
+  
+  app.get("/api/user/settings/:moduleName", isAuthenticated, async (req, res) => {
+    const userId = (req.user as any).id;
+    const moduleName = req.params.moduleName;
+    const setting = await storage.getUserSettingByModule(userId, moduleName);
+    
+    if (!setting) {
+      return res.status(404).json({ message: "Setting not found for this module" });
+    }
+    
+    res.json(setting);
+  });
+  
+  app.post("/api/user/settings", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const settingData = insertUserSettingsSchema.parse({ ...req.body, userId });
+      const setting = await storage.createUserSetting(settingData);
+      res.status(201).json(setting);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid user setting data", error });
+    }
+  });
+  
+  app.patch("/api/user/settings/:id", isAuthenticated, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const userId = (req.user as any).id;
+    
+    // Validate that the setting belongs to the current user
+    const allSettings = await storage.getUserSettings(userId);
+    const userSetting = allSettings.find(setting => setting.id === id);
+    
+    if (!userSetting) {
+      return res.status(404).json({ message: "Setting not found or does not belong to user" });
+    }
+    
+    try {
+      const updatedSetting = await storage.updateUserSetting(id, req.body);
+      res.json(updatedSetting);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid user setting data", error });
+    }
+  });
+  
+  app.delete("/api/user/settings/:id", isAuthenticated, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const userId = (req.user as any).id;
+    
+    // Validate that the setting belongs to the current user
+    const allSettings = await storage.getUserSettings(userId);
+    const userSetting = allSettings.find(setting => setting.id === id);
+    
+    if (!userSetting) {
+      return res.status(404).json({ message: "Setting not found or does not belong to user" });
+    }
+    
+    const result = await storage.deleteUserSetting(id);
+    res.json({ message: "User setting deleted successfully" });
+  });
+
   return httpServer;
 }

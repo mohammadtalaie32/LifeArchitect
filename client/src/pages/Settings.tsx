@@ -16,7 +16,7 @@ type UserSetting = {
   id: number;
   userId: number;
   moduleName: string;
-  isEnabled: boolean;
+  enabled: boolean;
   displayOrder: number;
   settings: Record<string, any>;
   createdAt: string | Date;
@@ -40,7 +40,7 @@ const Settings = () => {
       const settings: Record<string, Record<string, any>> = {};
       
       userSettings.forEach((setting) => {
-        states[setting.moduleName] = setting.isEnabled;
+        states[setting.moduleName] = setting.enabled;
         settings[setting.moduleName] = setting.settings || {};
       });
       
@@ -50,13 +50,13 @@ const Settings = () => {
   });
   
   const updateSettingMutation = useMutation({
-    mutationFn: async ({ id, isEnabled, settings }: { id: number, isEnabled?: boolean, settings?: Record<string, any> }) => {
+    mutationFn: async ({ id, enabled, settings }: { id: number, enabled?: boolean, settings?: Record<string, any> }) => {
       const response = await fetch(`/api/user/settings/${id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ isEnabled, settings })
+        body: JSON.stringify({ enabled, settings })
       });
       
       if (!response.ok) {
@@ -87,7 +87,7 @@ const Settings = () => {
     
     updateSettingMutation.mutate({
       id: setting.id,
-      isEnabled: newState
+      enabled: newState
     });
   };
   

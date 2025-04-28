@@ -704,7 +704,7 @@ export class MemStorage implements IStorage {
     this.createUserSetting({
       userId,
       moduleName: "dashboard",
-      isEnabled: true,
+      enabled: true,
       displayOrder: 1,
       settings: { widgets: ["goals", "habits", "activities", "mood"] }
     });
@@ -712,7 +712,7 @@ export class MemStorage implements IStorage {
     this.createUserSetting({
       userId,
       moduleName: "goals",
-      isEnabled: true,
+      enabled: true,
       displayOrder: 2,
       settings: { defaultView: "list" }
     });
@@ -720,7 +720,7 @@ export class MemStorage implements IStorage {
     this.createUserSetting({
       userId,
       moduleName: "habits",
-      isEnabled: true,
+      enabled: true,
       displayOrder: 3,
       settings: { reminderTime: "08:00" }
     });
