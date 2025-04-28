@@ -1,6 +1,8 @@
 import {
   User,
   InsertUser,
+  UserSettings,
+  InsertUserSettings,
   Principle,
   InsertPrinciple, 
   Goal,
@@ -24,6 +26,7 @@ import {
   ActivityTag,
   InsertActivityTag,
   users,
+  userSettings,
   principles,
   goals,
   projects,
@@ -45,6 +48,13 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  
+  // User Settings methods
+  getUserSettings(userId: number): Promise<UserSettings[]>;
+  getUserSettingByModule(userId: number, moduleName: string): Promise<UserSettings | undefined>;
+  createUserSetting(setting: InsertUserSettings): Promise<UserSettings>;
+  updateUserSetting(id: number, setting: Partial<InsertUserSettings>): Promise<UserSettings | undefined>;
+  deleteUserSetting(id: number): Promise<boolean>;
   
   // Principles methods
   getPrinciplesByUserId(userId: number): Promise<Principle[]>;
@@ -123,6 +133,7 @@ export interface IStorage {
 
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
+  private userSettings: Map<number, UserSettings>;
   private principles: Map<number, Principle>;
   private goals: Map<number, Goal>;
   private projects: Map<number, Project>;
@@ -136,6 +147,7 @@ export class MemStorage implements IStorage {
   private activityTags: Map<string, ActivityTag>;
   
   private userIdCounter: number;
+  private userSettingIdCounter: number;
   private principleIdCounter: number;
   private goalIdCounter: number;
   private projectIdCounter: number;
@@ -149,6 +161,7 @@ export class MemStorage implements IStorage {
 
   constructor() {
     this.users = new Map();
+    this.userSettings = new Map();
     this.principles = new Map();
     this.goals = new Map();
     this.projects = new Map();
@@ -162,6 +175,7 @@ export class MemStorage implements IStorage {
     this.activityTags = new Map();
     
     this.userIdCounter = 1;
+    this.userSettingIdCounter = 1;
     this.principleIdCounter = 1;
     this.goalIdCounter = 1;
     this.projectIdCounter = 1;
@@ -201,6 +215,41 @@ export class MemStorage implements IStorage {
     const user: User = { ...insertUser, id };
     this.users.set(id, user);
     return user;
+  }
+  
+  // User Settings methods
+  async getUserSettings(userId: number): Promise<UserSettings[]> {
+    return Array.from(this.userSettings.values())
+      .filter(setting => setting.userId === userId)
+      .sort((a, b) => a.moduleName.localeCompare(b.moduleName));
+  }
+  
+  async getUserSettingByModule(userId: number, moduleName: string): Promise<UserSettings | undefined> {
+    return Array.from(this.userSettings.values())
+      .find(setting => setting.userId === userId && setting.moduleName === moduleName);
+  }
+  
+  async createUserSetting(setting: InsertUserSettings): Promise<UserSettings> {
+    const id = this.userSettingIdCounter++;
+    const createdAt = new Date();
+    const updatedAt = new Date();
+    const newSetting: UserSettings = { ...setting, id, createdAt, updatedAt };
+    this.userSettings.set(id, newSetting);
+    return newSetting;
+  }
+  
+  async updateUserSetting(id: number, setting: Partial<InsertUserSettings>): Promise<UserSettings | undefined> {
+    const existingSetting = this.userSettings.get(id);
+    if (!existingSetting) return undefined;
+    
+    const updatedAt = new Date();
+    const updatedSetting = { ...existingSetting, ...setting, updatedAt };
+    this.userSettings.set(id, updatedSetting);
+    return updatedSetting;
+  }
+  
+  async deleteUserSetting(id: number): Promise<boolean> {
+    return this.userSettings.delete(id);
   }
   
   // Principles methods

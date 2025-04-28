@@ -11,11 +11,27 @@ export const users = pgTable("users", {
   email: text("email"),
 });
 
+// User Settings Schema
+export const userSettings = pgTable("user_settings", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  moduleName: text("module_name").notNull(),
+  enabled: boolean("enabled").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
   name: true,
   email: true,
+});
+
+export const insertUserSettingsSchema = createInsertSchema(userSettings).pick({
+  userId: true,
+  moduleName: true,
+  enabled: true,
 });
 
 // Core Principles Schema
@@ -261,6 +277,9 @@ export const insertActivityTagSchema = createInsertSchema(activityTags).pick({
 // Type Exports
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+
+export type UserSettings = typeof userSettings.$inferSelect;
+export type InsertUserSettings = z.infer<typeof insertUserSettingsSchema>;
 
 export type Principle = typeof principles.$inferSelect;
 export type InsertPrinciple = z.infer<typeof insertPrincipleSchema>;
