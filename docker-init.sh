@@ -1,17 +1,19 @@
 #!/bin/bash
 set -e
 
-# Wait for the database to be ready
-echo "Waiting for PostgreSQL to be ready..."
-sleep 5
+# Wait for database to be ready
+echo "Waiting for database to be ready..."
+./scripts/wait-for-db.sh
 
-# Run the database migrations
+# Run database migrations
 echo "Running database migrations..."
 npm run db:push
 
-# Initialize development data
-echo "Initializing development data..."
-node scripts/init-data.js
+# Initialize sample data if needed
+if [[ "$INIT_SAMPLE_DATA" == "true" ]]; then
+  echo "Initializing sample data..."
+  node scripts/init-data.js
+fi
 
 # Start the application
 echo "Starting the application..."
