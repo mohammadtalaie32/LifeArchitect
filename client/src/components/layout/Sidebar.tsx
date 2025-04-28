@@ -9,7 +9,8 @@ import {
   Lightbulb, 
   Edit3, 
   PieChart, 
-  Users
+  Users,
+  LayoutGrid
 } from "lucide-react";
 import { User } from "@shared/schema";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -49,6 +50,11 @@ export default function Sidebar({ className, user, onNavigate }: SidebarProps) {
       name: "Habits & Rituals",
       path: "/habits-rituals",
       icon: <Calendar className="mr-3 h-5 w-5" />,
+    },
+    {
+      name: "Activities",
+      path: "/activities",
+      icon: <LayoutGrid className="mr-3 h-5 w-5" />,
     },
     {
       name: "Challenges & Solutions",

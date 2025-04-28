@@ -21,6 +21,7 @@ import ChallengesSolutions from "./pages/ChallengesSolutions";
 import SelfAnalysis from "./pages/SelfAnalysis";
 import Analytics from "./pages/Analytics";
 import SocialInteractions from "./pages/SocialInteractions";
+import Activities from "./pages/Activities";
 import NotFound from "./pages/not-found";
 
 // Create a context for user data
@@ -149,6 +150,7 @@ function App() {
               <Route path="/self-analysis" element={<SelfAnalysis />} />
               <Route path="/analytics" element={<Analytics />} />
               <Route path="/social-interactions" element={<SocialInteractions />} />
+              <Route path="/activities" element={<Activities />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Layout>
