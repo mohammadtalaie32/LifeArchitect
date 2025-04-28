@@ -700,6 +700,87 @@ export class MemStorage implements IStorage {
   
   // Initialize sample data for demo purposes
   private initializeSampleData(userId: number) {
+    // Initialize default user settings for modules
+    this.createUserSetting({
+      userId,
+      moduleName: "dashboard",
+      isEnabled: true,
+      displayOrder: 1,
+      settings: { widgets: ["goals", "habits", "activities", "mood"] }
+    });
+    
+    this.createUserSetting({
+      userId,
+      moduleName: "goals",
+      isEnabled: true,
+      displayOrder: 2,
+      settings: { defaultView: "list" }
+    });
+    
+    this.createUserSetting({
+      userId,
+      moduleName: "habits",
+      isEnabled: true,
+      displayOrder: 3,
+      settings: { reminderTime: "08:00" }
+    });
+    
+    this.createUserSetting({
+      userId,
+      moduleName: "activities",
+      isEnabled: true,
+      displayOrder: 4,
+      settings: { defaultQuadrant: "do" }
+    });
+    
+    this.createUserSetting({
+      userId,
+      moduleName: "principles",
+      isEnabled: true,
+      displayOrder: 5,
+      settings: {}
+    });
+    
+    this.createUserSetting({
+      userId,
+      moduleName: "projects",
+      isEnabled: true,
+      displayOrder: 6,
+      settings: {}
+    });
+    
+    this.createUserSetting({
+      userId,
+      moduleName: "journal",
+      isEnabled: true,
+      displayOrder: 7,
+      settings: { reminderTime: "20:00" }
+    });
+    
+    this.createUserSetting({
+      userId,
+      moduleName: "mood",
+      isEnabled: true,
+      displayOrder: 8,
+      settings: { factors: ["sleep", "exercise", "nutrition", "social", "work"] }
+    });
+    
+    this.createUserSetting({
+      userId,
+      moduleName: "calendar",
+      isEnabled: true,
+      displayOrder: 9,
+      settings: { defaultView: "week" }
+    });
+    
+    this.createUserSetting({
+      userId,
+      moduleName: "analytics",
+      isEnabled: true,
+      displayOrder: 10,
+      settings: { defaultTimeRange: "month" }
+    });
+    
     // Add core principles
     this.createPrinciple({
       userId,
@@ -1045,6 +1126,43 @@ export class DatabaseStorage implements IStorage {
   async createUser(user: InsertUser): Promise<User> {
     const result = await db.insert(users).values(user).returning();
     return result[0];
+  }
+  
+  // User Settings methods
+  async getUserSettings(userId: number): Promise<UserSettings[]> {
+    return db.select()
+      .from(userSettings)
+      .where(eq(userSettings.userId, userId))
+      .orderBy(userSettings.moduleName);
+  }
+  
+  async getUserSettingByModule(userId: number, moduleName: string): Promise<UserSettings | undefined> {
+    const result = await db.select()
+      .from(userSettings)
+      .where(and(
+        eq(userSettings.userId, userId),
+        eq(userSettings.moduleName, moduleName)
+      ));
+    return result.length > 0 ? result[0] : undefined;
+  }
+  
+  async createUserSetting(setting: InsertUserSettings): Promise<UserSettings> {
+    const result = await db.insert(userSettings).values(setting).returning();
+    return result[0];
+  }
+  
+  async updateUserSetting(id: number, setting: Partial<InsertUserSettings>): Promise<UserSettings | undefined> {
+    const now = new Date();
+    const result = await db.update(userSettings)
+      .set({ ...setting, updatedAt: now })
+      .where(eq(userSettings.id, id))
+      .returning();
+    return result.length > 0 ? result[0] : undefined;
+  }
+  
+  async deleteUserSetting(id: number): Promise<boolean> {
+    await db.delete(userSettings).where(eq(userSettings.id, id));
+    return true;
   }
   
   // Principles methods
