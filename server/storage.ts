@@ -17,6 +17,12 @@ import {
   InsertMoodEntry,
   Event,
   InsertEvent,
+  Activity,
+  InsertActivity,
+  Tag,
+  InsertTag,
+  ActivityTag,
+  InsertActivityTag,
   users,
   principles,
   goals,
@@ -25,8 +31,14 @@ import {
   habitEntries,
   journalEntries,
   moodEntries,
-  events
+  events,
+  activities,
+  tags,
+  activityTags
 } from "@shared/schema";
+
+import { db } from "./db";
+import { eq, and, gte, lte, desc, asc } from "drizzle-orm";
 
 export interface IStorage {
   // User methods
@@ -84,6 +96,29 @@ export interface IStorage {
   createEvent(event: InsertEvent): Promise<Event>;
   updateEvent(id: number, event: Partial<InsertEvent>): Promise<Event | undefined>;
   deleteEvent(id: number): Promise<boolean>;
+  
+  // Activities methods
+  getActivitiesByUserId(userId: number): Promise<Activity[]>;
+  getActivityById(id: number): Promise<Activity | undefined>;
+  createActivity(activity: InsertActivity): Promise<Activity>;
+  updateActivity(id: number, activity: Partial<InsertActivity>): Promise<Activity | undefined>;
+  deleteActivity(id: number): Promise<boolean>;
+  
+  // Tags methods
+  getTagsByUserId(userId: number): Promise<Tag[]>;
+  getTagById(id: number): Promise<Tag | undefined>;
+  createTag(tag: InsertTag): Promise<Tag>;
+  updateTag(id: number, tag: Partial<InsertTag>): Promise<Tag | undefined>;
+  deleteTag(id: number): Promise<boolean>;
+  
+  // Activity Tags methods
+  getActivityTagsByActivityId(activityId: number): Promise<ActivityTag[]>;
+  getActivityTagsByTagId(tagId: number): Promise<ActivityTag[]>;
+  createActivityTag(activityTag: InsertActivityTag): Promise<ActivityTag>;
+  deleteActivityTag(activityId: number, tagId: number): Promise<boolean>;
+  
+  // Database initialization method
+  initializeData(): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -96,6 +131,9 @@ export class MemStorage implements IStorage {
   private journalEntries: Map<number, JournalEntry>;
   private moodEntries: Map<number, MoodEntry>;
   private events: Map<number, Event>;
+  private activities: Map<number, Activity>;
+  private tags: Map<number, Tag>;
+  private activityTags: Map<string, ActivityTag>;
   
   private userIdCounter: number;
   private principleIdCounter: number;
@@ -106,6 +144,8 @@ export class MemStorage implements IStorage {
   private journalEntryIdCounter: number;
   private moodEntryIdCounter: number;
   private eventIdCounter: number;
+  private activityIdCounter: number;
+  private tagIdCounter: number;
 
   constructor() {
     this.users = new Map();
@@ -117,6 +157,9 @@ export class MemStorage implements IStorage {
     this.journalEntries = new Map();
     this.moodEntries = new Map();
     this.events = new Map();
+    this.activities = new Map();
+    this.tags = new Map();
+    this.activityTags = new Map();
     
     this.userIdCounter = 1;
     this.principleIdCounter = 1;
@@ -127,6 +170,8 @@ export class MemStorage implements IStorage {
     this.journalEntryIdCounter = 1;
     this.moodEntryIdCounter = 1;
     this.eventIdCounter = 1;
+    this.activityIdCounter = 1;
+    this.tagIdCounter = 1;
     
     // Initialize with demo user
     this.createUser({
@@ -462,12 +507,154 @@ export class MemStorage implements IStorage {
     return this.events.delete(id);
   }
   
+  // Activities methods
+  async getActivitiesByUserId(userId: number): Promise<Activity[]> {
+    return Array.from(this.activities.values())
+      .filter(activity => activity.userId === userId)
+      .sort((a, b) => {
+        // First sort by quadrant
+        if (a.quadrant !== b.quadrant) {
+          return a.quadrant.localeCompare(b.quadrant);
+        }
+        // Then by priority
+        return (a.priority || 0) - (b.priority || 0);
+      });
+  }
+  
+  async getActivityById(id: number): Promise<Activity | undefined> {
+    return this.activities.get(id);
+  }
+  
+  async createActivity(activity: InsertActivity): Promise<Activity> {
+    const id = this.activityIdCounter++;
+    const createdAt = new Date();
+    const newActivity: Activity = { ...activity, id, createdAt };
+    this.activities.set(id, newActivity);
+    return newActivity;
+  }
+  
+  async updateActivity(id: number, activity: Partial<InsertActivity>): Promise<Activity | undefined> {
+    const existingActivity = this.activities.get(id);
+    if (!existingActivity) return undefined;
+    
+    const updatedActivity = { ...existingActivity, ...activity };
+    this.activities.set(id, updatedActivity);
+    return updatedActivity;
+  }
+  
+  async deleteActivity(id: number): Promise<boolean> {
+    // Delete associated activity tags first
+    const activityTagKeys: string[] = [];
+    for (const [key, activityTag] of this.activityTags.entries()) {
+      if (activityTag.activityId === id) {
+        activityTagKeys.push(key);
+      }
+    }
+    
+    for (const key of activityTagKeys) {
+      this.activityTags.delete(key);
+    }
+    
+    return this.activities.delete(id);
+  }
+  
+  // Tags methods
+  async getTagsByUserId(userId: number): Promise<Tag[]> {
+    return Array.from(this.tags.values())
+      .filter(tag => tag.userId === userId);
+  }
+  
+  async getTagById(id: number): Promise<Tag | undefined> {
+    return this.tags.get(id);
+  }
+  
+  async createTag(tag: InsertTag): Promise<Tag> {
+    const id = this.tagIdCounter++;
+    const createdAt = new Date();
+    const newTag: Tag = { ...tag, id, createdAt };
+    this.tags.set(id, newTag);
+    return newTag;
+  }
+  
+  async updateTag(id: number, tag: Partial<InsertTag>): Promise<Tag | undefined> {
+    const existingTag = this.tags.get(id);
+    if (!existingTag) return undefined;
+    
+    const updatedTag = { ...existingTag, ...tag };
+    this.tags.set(id, updatedTag);
+    return updatedTag;
+  }
+  
+  async deleteTag(id: number): Promise<boolean> {
+    // Delete associated activity tags first
+    const activityTagKeys: string[] = [];
+    for (const [key, activityTag] of this.activityTags.entries()) {
+      if (activityTag.tagId === id) {
+        activityTagKeys.push(key);
+      }
+    }
+    
+    for (const key of activityTagKeys) {
+      this.activityTags.delete(key);
+    }
+    
+    return this.tags.delete(id);
+  }
+  
+  // Activity Tags methods
+  async getActivityTagsByActivityId(activityId: number): Promise<ActivityTag[]> {
+    return Array.from(this.activityTags.values())
+      .filter(tag => tag.activityId === activityId);
+  }
+  
+  async getActivityTagsByTagId(tagId: number): Promise<ActivityTag[]> {
+    return Array.from(this.activityTags.values())
+      .filter(tag => tag.tagId === tagId);
+  }
+  
+  async createActivityTag(activityTag: InsertActivityTag): Promise<ActivityTag> {
+    const key = `${activityTag.activityId}-${activityTag.tagId}`;
+    const createdAt = new Date();
+    const newActivityTag: ActivityTag = { 
+      ...activityTag, 
+      createdAt,
+      // Ensure these exist with proper null if not defined
+      principleId: activityTag.principleId || null,
+      goalId: activityTag.goalId || null
+    };
+    this.activityTags.set(key, newActivityTag);
+    return newActivityTag;
+  }
+  
+  async deleteActivityTag(activityId: number, tagId: number): Promise<boolean> {
+    const key = `${activityId}-${tagId}`;
+    return this.activityTags.delete(key);
+  }
+  
+  // Initialize database with sample data
+  async initializeData(): Promise<void> {
+    // Check if we already have users
+    const users = Array.from(this.users.values());
+    if (users.length === 0) {
+      // Create a demo user if none exists
+      const demoUser = await this.createUser({
+        username: "demo",
+        password: "password",
+        name: "Demo User",
+        email: "demo@example.com"
+      });
+      
+      // Initialize sample data for the demo user
+      this.initializeSampleData(demoUser.id);
+    }
+  }
+  
   // Initialize sample data for demo purposes
   private initializeSampleData(userId: number) {
     // Add core principles
     this.createPrinciple({
       userId,
-      title: "Pursuing Passion",
+      title: "Pursuing Passion", 
       description: "Engage daily in activities that fuel creativity and purpose",
       color: "#4F46E5", // primary-600
       order: 1
@@ -793,4 +980,693 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Database storage implementation
+export class DatabaseStorage implements IStorage {
+  // User methods
+  async getUser(id: number): Promise<User | undefined> {
+    const result = await db.select().from(users).where(eq(users.id, id));
+    return result.length > 0 ? result[0] : undefined;
+  }
+  
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const result = await db.select().from(users).where(eq(users.username, username));
+    return result.length > 0 ? result[0] : undefined;
+  }
+  
+  async createUser(user: InsertUser): Promise<User> {
+    const result = await db.insert(users).values(user).returning();
+    return result[0];
+  }
+  
+  // Principles methods
+  async getPrinciplesByUserId(userId: number): Promise<Principle[]> {
+    return db.select().from(principles).where(eq(principles.userId, userId)).orderBy(principles.order);
+  }
+  
+  async createPrinciple(principle: InsertPrinciple): Promise<Principle> {
+    const result = await db.insert(principles).values(principle).returning();
+    return result[0];
+  }
+  
+  async updatePrinciple(id: number, principle: Partial<InsertPrinciple>): Promise<Principle | undefined> {
+    const result = await db.update(principles)
+      .set(principle)
+      .where(eq(principles.id, id))
+      .returning();
+    return result.length > 0 ? result[0] : undefined;
+  }
+  
+  async deletePrinciple(id: number): Promise<boolean> {
+    await db.delete(principles).where(eq(principles.id, id));
+    return true;
+  }
+  
+  // Goals methods
+  async getGoalsByUserId(userId: number): Promise<Goal[]> {
+    return db.select().from(goals).where(eq(goals.userId, userId)).orderBy(desc(goals.createdAt));
+  }
+  
+  async getGoalById(id: number): Promise<Goal | undefined> {
+    const result = await db.select().from(goals).where(eq(goals.id, id));
+    return result.length > 0 ? result[0] : undefined;
+  }
+  
+  async createGoal(goal: InsertGoal): Promise<Goal> {
+    const result = await db.insert(goals).values(goal).returning();
+    return result[0];
+  }
+  
+  async updateGoal(id: number, goal: Partial<InsertGoal>): Promise<Goal | undefined> {
+    const result = await db.update(goals)
+      .set(goal)
+      .where(eq(goals.id, id))
+      .returning();
+    return result.length > 0 ? result[0] : undefined;
+  }
+  
+  async deleteGoal(id: number): Promise<boolean> {
+    await db.delete(goals).where(eq(goals.id, id));
+    return true;
+  }
+  
+  // Projects methods
+  async getProjectsByUserId(userId: number): Promise<Project[]> {
+    return db.select().from(projects).where(eq(projects.userId, userId)).orderBy(desc(projects.createdAt));
+  }
+  
+  async getProjectById(id: number): Promise<Project | undefined> {
+    const result = await db.select().from(projects).where(eq(projects.id, id));
+    return result.length > 0 ? result[0] : undefined;
+  }
+  
+  async createProject(project: InsertProject): Promise<Project> {
+    const result = await db.insert(projects).values(project).returning();
+    return result[0];
+  }
+  
+  async updateProject(id: number, project: Partial<InsertProject>): Promise<Project | undefined> {
+    const result = await db.update(projects)
+      .set(project)
+      .where(eq(projects.id, id))
+      .returning();
+    return result.length > 0 ? result[0] : undefined;
+  }
+  
+  async deleteProject(id: number): Promise<boolean> {
+    await db.delete(projects).where(eq(projects.id, id));
+    return true;
+  }
+  
+  // Habits methods
+  async getHabitsByUserId(userId: number): Promise<Habit[]> {
+    return db.select().from(habits).where(eq(habits.userId, userId));
+  }
+  
+  async getHabitById(id: number): Promise<Habit | undefined> {
+    const result = await db.select().from(habits).where(eq(habits.id, id));
+    return result.length > 0 ? result[0] : undefined;
+  }
+  
+  async createHabit(habit: InsertHabit): Promise<Habit> {
+    const result = await db.insert(habits).values(habit).returning();
+    return result[0];
+  }
+  
+  async updateHabit(id: number, habit: Partial<InsertHabit>): Promise<Habit | undefined> {
+    const result = await db.update(habits)
+      .set(habit)
+      .where(eq(habits.id, id))
+      .returning();
+    return result.length > 0 ? result[0] : undefined;
+  }
+  
+  async deleteHabit(id: number): Promise<boolean> {
+    await db.delete(habits).where(eq(habits.id, id));
+    return true;
+  }
+  
+  // Habit Entries methods
+  async getHabitEntriesByHabitId(habitId: number): Promise<HabitEntry[]> {
+    return db.select().from(habitEntries).where(eq(habitEntries.habitId, habitId));
+  }
+  
+  async getHabitEntriesByUserId(userId: number, date?: Date): Promise<HabitEntry[]> {
+    if (!date) {
+      return db.select().from(habitEntries).where(eq(habitEntries.userId, userId));
+    }
+    
+    // Start and end of the given date
+    const startDate = new Date(date);
+    startDate.setHours(0, 0, 0, 0);
+    
+    const endDate = new Date(date);
+    endDate.setHours(23, 59, 59, 999);
+    
+    return db.select().from(habitEntries)
+      .where(and(
+        eq(habitEntries.userId, userId),
+        gte(habitEntries.completedAt, startDate),
+        lte(habitEntries.completedAt, endDate)
+      ));
+  }
+  
+  async createHabitEntry(entry: InsertHabitEntry): Promise<HabitEntry> {
+    const result = await db.insert(habitEntries).values(entry).returning();
+    
+    // Update streak for the habit
+    const habitId = entry.habitId;
+    const habit = await this.getHabitById(habitId);
+    
+    if (habit) {
+      const updatedStreak = (habit.streak || 0) + 1;
+      const bestStreak = Math.max(updatedStreak, habit.bestStreak || 0);
+      
+      await this.updateHabit(habitId, {
+        streak: updatedStreak,
+        bestStreak: bestStreak
+      });
+    }
+    
+    return result[0];
+  }
+  
+  async deleteHabitEntry(id: number): Promise<boolean> {
+    const entries = await db.select().from(habitEntries).where(eq(habitEntries.id, id));
+    
+    if (entries.length > 0) {
+      const entry = entries[0];
+      const habitId = entry.habitId;
+      const habit = await this.getHabitById(habitId);
+      
+      if (habit && habit.streak && habit.streak > 0) {
+        await this.updateHabit(habitId, {
+          streak: habit.streak - 1
+        });
+      }
+    }
+    
+    await db.delete(habitEntries).where(eq(habitEntries.id, id));
+    return true;
+  }
+  
+  // Journal Entries methods
+  async getJournalEntriesByUserId(userId: number): Promise<JournalEntry[]> {
+    return db.select().from(journalEntries)
+      .where(eq(journalEntries.userId, userId))
+      .orderBy(desc(journalEntries.createdAt));
+  }
+  
+  async getJournalEntryById(id: number): Promise<JournalEntry | undefined> {
+    const result = await db.select().from(journalEntries).where(eq(journalEntries.id, id));
+    return result.length > 0 ? result[0] : undefined;
+  }
+  
+  async createJournalEntry(entry: InsertJournalEntry): Promise<JournalEntry> {
+    const result = await db.insert(journalEntries).values(entry).returning();
+    return result[0];
+  }
+  
+  async updateJournalEntry(id: number, entry: Partial<InsertJournalEntry>): Promise<JournalEntry | undefined> {
+    const result = await db.update(journalEntries)
+      .set(entry)
+      .where(eq(journalEntries.id, id))
+      .returning();
+    return result.length > 0 ? result[0] : undefined;
+  }
+  
+  async deleteJournalEntry(id: number): Promise<boolean> {
+    await db.delete(journalEntries).where(eq(journalEntries.id, id));
+    return true;
+  }
+  
+  // Mood Entries methods
+  async getMoodEntriesByUserId(userId: number, startDate?: Date, endDate?: Date): Promise<MoodEntry[]> {
+    if (!startDate && !endDate) {
+      return db.select().from(moodEntries)
+        .where(eq(moodEntries.userId, userId))
+        .orderBy(desc(moodEntries.createdAt));
+    }
+    
+    let conditions = [eq(moodEntries.userId, userId)];
+    
+    if (startDate) {
+      conditions.push(gte(moodEntries.createdAt, startDate));
+    }
+    
+    if (endDate) {
+      conditions.push(lte(moodEntries.createdAt, endDate));
+    }
+    
+    return db.select().from(moodEntries)
+      .where(and(...conditions))
+      .orderBy(desc(moodEntries.createdAt));
+  }
+  
+  async createMoodEntry(entry: InsertMoodEntry): Promise<MoodEntry> {
+    const result = await db.insert(moodEntries).values(entry).returning();
+    return result[0];
+  }
+  
+  // Events methods
+  async getEventsByUserId(userId: number, startDate?: Date, endDate?: Date): Promise<Event[]> {
+    if (!startDate && !endDate) {
+      return db.select().from(events)
+        .where(eq(events.userId, userId))
+        .orderBy(asc(events.startTime));
+    }
+    
+    let conditions = [eq(events.userId, userId)];
+    
+    if (startDate) {
+      conditions.push(gte(events.startTime, startDate));
+    }
+    
+    if (endDate) {
+      conditions.push(lte(events.startTime, endDate));
+    }
+    
+    return db.select().from(events)
+      .where(and(...conditions))
+      .orderBy(asc(events.startTime));
+  }
+  
+  async getEventById(id: number): Promise<Event | undefined> {
+    const result = await db.select().from(events).where(eq(events.id, id));
+    return result.length > 0 ? result[0] : undefined;
+  }
+  
+  async createEvent(event: InsertEvent): Promise<Event> {
+    const result = await db.insert(events).values(event).returning();
+    return result[0];
+  }
+  
+  async updateEvent(id: number, event: Partial<InsertEvent>): Promise<Event | undefined> {
+    const result = await db.update(events)
+      .set(event)
+      .where(eq(events.id, id))
+      .returning();
+    return result.length > 0 ? result[0] : undefined;
+  }
+  
+  async deleteEvent(id: number): Promise<boolean> {
+    await db.delete(events).where(eq(events.id, id));
+    return true;
+  }
+  
+  // Activities methods
+  async getActivitiesByUserId(userId: number): Promise<Activity[]> {
+    return db.select().from(activities)
+      .where(eq(activities.userId, userId))
+      .orderBy(asc(activities.quadrant), asc(activities.priority));
+  }
+  
+  async getActivityById(id: number): Promise<Activity | undefined> {
+    const result = await db.select().from(activities).where(eq(activities.id, id));
+    return result.length > 0 ? result[0] : undefined;
+  }
+  
+  async createActivity(activity: InsertActivity): Promise<Activity> {
+    const result = await db.insert(activities).values(activity).returning();
+    return result[0];
+  }
+  
+  async updateActivity(id: number, activity: Partial<InsertActivity>): Promise<Activity | undefined> {
+    const result = await db.update(activities)
+      .set(activity)
+      .where(eq(activities.id, id))
+      .returning();
+    return result.length > 0 ? result[0] : undefined;
+  }
+  
+  async deleteActivity(id: number): Promise<boolean> {
+    await db.delete(activities).where(eq(activities.id, id));
+    return true;
+  }
+  
+  // Tags methods
+  async getTagsByUserId(userId: number): Promise<Tag[]> {
+    return db.select().from(tags).where(eq(tags.userId, userId));
+  }
+  
+  async getTagById(id: number): Promise<Tag | undefined> {
+    const result = await db.select().from(tags).where(eq(tags.id, id));
+    return result.length > 0 ? result[0] : undefined;
+  }
+  
+  async createTag(tag: InsertTag): Promise<Tag> {
+    const result = await db.insert(tags).values(tag).returning();
+    return result[0];
+  }
+  
+  async updateTag(id: number, tag: Partial<InsertTag>): Promise<Tag | undefined> {
+    const result = await db.update(tags)
+      .set(tag)
+      .where(eq(tags.id, id))
+      .returning();
+    return result.length > 0 ? result[0] : undefined;
+  }
+  
+  async deleteTag(id: number): Promise<boolean> {
+    await db.delete(tags).where(eq(tags.id, id));
+    return true;
+  }
+  
+  // Activity Tags methods
+  async getActivityTagsByActivityId(activityId: number): Promise<ActivityTag[]> {
+    return db.select().from(activityTags).where(eq(activityTags.activityId, activityId));
+  }
+  
+  async getActivityTagsByTagId(tagId: number): Promise<ActivityTag[]> {
+    return db.select().from(activityTags).where(eq(activityTags.tagId, tagId));
+  }
+  
+  async createActivityTag(activityTag: InsertActivityTag): Promise<ActivityTag> {
+    const result = await db.insert(activityTags).values(activityTag).returning();
+    return result[0];
+  }
+  
+  async deleteActivityTag(activityId: number, tagId: number): Promise<boolean> {
+    await db.delete(activityTags).where(
+      and(
+        eq(activityTags.activityId, activityId),
+        eq(activityTags.tagId, tagId)
+      )
+    );
+    return true;
+  }
+  
+  // Initialize sample data for a new installation
+  async initializeData(): Promise<void> {
+    try {
+      // Check if we have any users
+      const existingUsers = await db.select().from(users);
+      
+      if (existingUsers.length === 0) {
+        // Create a demo user
+        const demoUser = await this.createUser({
+          username: "demo",
+          password: "password",
+          name: "Demo User",
+          email: "demo@example.com"
+        });
+        
+        const userId = demoUser.id;
+        
+        // Add core principles
+        await this.createPrinciple({
+          userId,
+          title: "Pursuing Passion",
+          description: "Always pursue activities that ignite your enthusiasm and energy.",
+          color: "#FE4A49",
+          order: 1
+        });
+        
+        await this.createPrinciple({
+          userId,
+          title: "Continuous Learning",
+          description: "Embrace new knowledge and skills as opportunities for growth.",
+          color: "#2AB7CA",
+          order: 2
+        });
+        
+        await this.createPrinciple({
+          userId,
+          title: "Balanced Living",
+          description: "Maintain harmony between work, relationships, health, and personal time.",
+          color: "#FED766",
+          order: 3
+        });
+        
+        await this.createPrinciple({
+          userId,
+          title: "Authentic Relationships",
+          description: "Build connections based on honesty, mutual respect, and genuine care.",
+          color: "#F86624",
+          order: 4
+        });
+        
+        // Add goals
+        await this.createGoal({
+          userId,
+          title: "Complete coding course module",
+          description: "Finish the React advanced patterns section",
+          targetDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+          completed: false,
+          progress: 75,
+          totalSteps: 100,
+          color: "#4361EE",
+          category: "learning"
+        });
+        
+        await this.createGoal({
+          userId,
+          title: "Run a half marathon",
+          description: "Train for and complete a 21K run",
+          targetDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // 60 days from now
+          completed: false,
+          progress: 30,
+          totalSteps: 100,
+          color: "#F94144",
+          category: "health"
+        });
+        
+        // Add habits
+        const morningJournalHabit = await this.createHabit({
+          userId,
+          title: "Morning Journal",
+          description: "Write in journal for 10 minutes after waking up",
+          frequency: "daily",
+          timeOfDay: "morning",
+          streak: 5,
+          bestStreak: 14
+        });
+        
+        await this.createHabit({
+          userId,
+          title: "Evening Reading",
+          description: "Read a book for 30 minutes before bed",
+          frequency: "daily",
+          timeOfDay: "evening",
+          streak: 3,
+          bestStreak: 21
+        });
+        
+        await this.createHabit({
+          userId,
+          title: "Weekly Review",
+          description: "Review goals and plan the upcoming week",
+          frequency: "weekly",
+          timeOfDay: "evening",
+          streak: 2,
+          bestStreak: 8
+        });
+        
+        // Add a habit entry for "Morning Journal" today
+        await this.createHabitEntry({
+          habitId: morningJournalHabit.id,
+          userId,
+          completed: true,
+          completedAt: new Date(),
+          notes: "Wrote about yesterday's accomplishments and today's goals"
+        });
+        
+        // Add journal entries
+        await this.createJournalEntry({
+          userId,
+          title: "Morning Reflection",
+          content: "Today I'm feeling motivated to start on the new project. I've been thinking about the approach and I'm excited to implement some of the ideas that have been brewing.",
+          mood: "positive",
+          tags: ["motivation", "work", "project"]
+        });
+        
+        await this.createJournalEntry({
+          userId,
+          title: "Weekend Plans",
+          content: "Thinking about taking a short hike this weekend. Need to disconnect from screens and connect with nature. Maybe invite a friend along.",
+          mood: "neutral",
+          tags: ["plans", "nature", "self-care"]
+        });
+        
+        // Add mood entries
+        await this.createMoodEntry({
+          userId,
+          mood: "positive",
+          intensityLevel: 4,
+          factors: { factors: ["Good sleep", "Productive work session", "Social interaction"] },
+          notes: "Had a great day overall - accomplished key tasks and had good energy levels"
+        });
+        
+        // Add events
+        await this.createEvent({
+          userId,
+          title: "Coding Meetup",
+          description: "Local JavaScript developer meetup at the tech hub",
+          location: "TechHub Downtown",
+          startTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 18 * 60 * 60 * 1000), // 3 days from now at 6 PM
+          endTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000 + 20 * 60 * 60 * 1000), // 3 days from now at 8 PM
+          category: "networking",
+          icon: "users"
+        });
+        
+        await this.createEvent({
+          userId,
+          title: "Project Deadline",
+          description: "Submit the final version of the project",
+          startTime: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000 + 9 * 60 * 60 * 1000), // 10 days from now at 9 AM
+          category: "work",
+          icon: "calendar"
+        });
+        
+        // Add example activities for Eisenhower Matrix
+        await this.createActivity({
+          userId,
+          title: "Finish project proposal",
+          description: "Complete the client proposal document",
+          quadrant: "urgent-important",
+          status: "in-progress",
+          priority: 1,
+          dueDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000), // Tomorrow
+          estimatedTime: 120,
+          color: "#e63946",
+          icon: "file-text"
+        });
+        
+        await this.createActivity({
+          userId,
+          title: "Weekly team meeting",
+          description: "Prepare for and attend the weekly team sync",
+          quadrant: "urgent-important",
+          status: "pending",
+          priority: 2,
+          dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // In 2 days
+          estimatedTime: 60,
+          color: "#e63946",
+          icon: "users"
+        });
+        
+        await this.createActivity({
+          userId,
+          title: "Learn new framework",
+          description: "Study the new front-end framework documentation",
+          quadrant: "not-urgent-important",
+          status: "pending",
+          priority: 1,
+          dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // In 2 weeks
+          estimatedTime: 240,
+          color: "#457b9d",
+          icon: "book"
+        });
+        
+        await this.createActivity({
+          userId,
+          title: "Update resume",
+          description: "Add recent projects and update skills section",
+          quadrant: "not-urgent-important",
+          status: "pending",
+          priority: 2,
+          dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // In a month
+          estimatedTime: 90,
+          color: "#457b9d",
+          icon: "file"
+        });
+        
+        await this.createActivity({
+          userId,
+          title: "Respond to non-urgent emails",
+          description: "Clear out inbox of non-critical messages",
+          quadrant: "urgent-not-important",
+          status: "pending",
+          priority: 1,
+          dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // In 3 days
+          estimatedTime: 45,
+          color: "#f4a261",
+          icon: "mail"
+        });
+        
+        await this.createActivity({
+          userId,
+          title: "Fix minor UI bug",
+          description: "Address the styling issue in the sidebar component",
+          quadrant: "urgent-not-important",
+          status: "pending",
+          priority: 2,
+          dueDate: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000), // In 4 days
+          estimatedTime: 30,
+          color: "#f4a261",
+          icon: "code"
+        });
+        
+        await this.createActivity({
+          userId,
+          title: "Browse tech news",
+          description: "Read latest articles on tech trends",
+          quadrant: "not-urgent-not-important",
+          status: "pending",
+          priority: 1,
+          dueDate: null,
+          estimatedTime: 30,
+          color: "#a8dadc",
+          icon: "newspaper"
+        });
+        
+        await this.createActivity({
+          userId,
+          title: "Organize digital files",
+          description: "Clean up downloads folder and reorganize documents",
+          quadrant: "not-urgent-not-important",
+          status: "pending",
+          priority: 2,
+          dueDate: null,
+          estimatedTime: 60,
+          color: "#a8dadc",
+          icon: "folder"
+        });
+        
+        // Create tags based on principles
+        const principles = await this.getPrinciplesByUserId(userId);
+        for (const principle of principles) {
+          await this.createTag({
+            userId,
+            name: principle.title,
+            color: principle.color,
+            category: "principle"
+          });
+        }
+        
+        // Create tags based on goals
+        const goals = await this.getGoalsByUserId(userId);
+        for (const goal of goals) {
+          await this.createTag({
+            userId,
+            name: goal.title,
+            color: goal.color || "#4361EE",
+            category: "goal"
+          });
+        }
+        
+        // Add some custom tags
+        const customTags = [
+          { name: "Work", color: "#ff7b00" },
+          { name: "Personal", color: "#6a4c93" },
+          { name: "Health", color: "#06d6a0" },
+          { name: "Learning", color: "#118ab2" },
+          { name: "Social", color: "#ef476f" }
+        ];
+        
+        for (const tagInfo of customTags) {
+          await this.createTag({
+            userId,
+            name: tagInfo.name,
+            color: tagInfo.color,
+            category: "custom"
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error initializing data:", error);
+    }
+  }
+}
+
+// Use database storage
+export const storage = new DatabaseStorage();

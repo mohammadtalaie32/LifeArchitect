@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, date, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, date, timestamp, jsonb, primaryKey, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -21,7 +21,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
 // Core Principles Schema
 export const principles = pgTable("principles", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   description: text("description").notNull(),
   color: text("color").notNull(),
@@ -39,7 +39,7 @@ export const insertPrincipleSchema = createInsertSchema(principles).pick({
 // Goals Schema
 export const goals = pgTable("goals", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   description: text("description"),
   targetDate: date("target_date"),
@@ -66,7 +66,7 @@ export const insertGoalSchema = createInsertSchema(goals).pick({
 // Passions & Projects Schema
 export const projects = pgTable("projects", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   description: text("description"),
   category: text("category"),
@@ -89,7 +89,7 @@ export const insertProjectSchema = createInsertSchema(projects).pick({
 // Habits & Rituals Schema
 export const habits = pgTable("habits", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   description: text("description"),
   frequency: text("frequency").notNull(), // daily, weekly, etc.
@@ -112,8 +112,8 @@ export const insertHabitSchema = createInsertSchema(habits).pick({
 // Habit Tracking Schema
 export const habitEntries = pgTable("habit_entries", {
   id: serial("id").primaryKey(),
-  habitId: integer("habit_id").notNull(),
-  userId: integer("user_id").notNull(),
+  habitId: integer("habit_id").notNull().references(() => habits.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   completed: boolean("completed").default(true),
   completedAt: timestamp("completed_at").defaultNow(),
   notes: text("notes"),
@@ -130,7 +130,7 @@ export const insertHabitEntrySchema = createInsertSchema(habitEntries).pick({
 // Journal Entries Schema
 export const journalEntries = pgTable("journal_entries", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   content: text("content").notNull(),
   mood: text("mood"),
@@ -149,7 +149,7 @@ export const insertJournalEntrySchema = createInsertSchema(journalEntries).pick(
 // Mood Tracking Schema
 export const moodEntries = pgTable("mood_entries", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   mood: text("mood").notNull(), // positive, neutral, negative
   intensityLevel: integer("intensity_level").default(3), // 1-5 scale
   factors: jsonb("factors"), // JSON array of factors affecting mood
@@ -168,7 +168,7 @@ export const insertMoodEntrySchema = createInsertSchema(moodEntries).pick({
 // Social Interactions & Events
 export const events = pgTable("events", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   description: text("description"),
   location: text("location"),
@@ -188,6 +188,74 @@ export const insertEventSchema = createInsertSchema(events).pick({
   endTime: true,
   category: true,
   icon: true,
+});
+
+// Eisenhower Matrix Activities Schema
+export const activities = pgTable("activities", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  quadrant: text("quadrant").notNull(), // "urgent-important", "not-urgent-important", "urgent-not-important", "not-urgent-not-important"
+  status: text("status").default("pending"), // "pending", "in-progress", "completed", "cancelled"
+  priority: integer("priority").default(0), // A numerical value for ordering within quadrants
+  dueDate: timestamp("due_date"),
+  estimatedTime: integer("estimated_time"), // in minutes
+  actualTime: integer("actual_time"), // in minutes
+  color: text("color"),
+  icon: text("icon"),
+  createdAt: timestamp("created_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
+export const insertActivitySchema = createInsertSchema(activities).pick({
+  userId: true,
+  title: true,
+  description: true,
+  quadrant: true,
+  status: true,
+  priority: true,
+  dueDate: true,
+  estimatedTime: true,
+  actualTime: true,
+  color: true,
+  icon: true,
+  completedAt: true,
+});
+
+// Tags for activities - These can be principles, goals, or custom tags
+export const tags = pgTable("tags", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  color: text("color"),
+  category: text("category"), // "principle", "goal", "custom"
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertTagSchema = createInsertSchema(tags).pick({
+  userId: true,
+  name: true,
+  color: true,
+  category: true,
+});
+
+// Activity-Tag many-to-many relationship
+export const activityTags = pgTable("activity_tags", {
+  activityId: integer("activity_id").notNull().references(() => activities.id, { onDelete: "cascade" }),
+  tagId: integer("tag_id").notNull().references(() => tags.id, { onDelete: "cascade" }),
+  principleId: integer("principle_id").references(() => principles.id, { onDelete: "set null" }),
+  goalId: integer("goal_id").references(() => goals.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.activityId, t.tagId] }),
+}));
+
+export const insertActivityTagSchema = createInsertSchema(activityTags).pick({
+  activityId: true,
+  tagId: true,
+  principleId: true,
+  goalId: true,
 });
 
 // Type Exports
@@ -217,3 +285,12 @@ export type InsertMoodEntry = z.infer<typeof insertMoodEntrySchema>;
 
 export type Event = typeof events.$inferSelect;
 export type InsertEvent = z.infer<typeof insertEventSchema>;
+
+export type Activity = typeof activities.$inferSelect;
+export type InsertActivity = z.infer<typeof insertActivitySchema>;
+
+export type Tag = typeof tags.$inferSelect;
+export type InsertTag = z.infer<typeof insertTagSchema>;
+
+export type ActivityTag = typeof activityTags.$inferSelect;
+export type InsertActivityTag = z.infer<typeof insertActivityTagSchema>;

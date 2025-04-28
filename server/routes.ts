@@ -21,6 +21,9 @@ import MemoryStore from "memorystore";
 const MemoryStoreSession = MemoryStore(session);
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Initialize database with sample data
+  await storage.initializeData();
+  
   // Session setup
   app.use(
     session({
