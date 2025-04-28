@@ -728,7 +728,7 @@ export class MemStorage implements IStorage {
     this.createUserSetting({
       userId,
       moduleName: "activities",
-      isEnabled: true,
+      enabled: true,
       displayOrder: 4,
       settings: { defaultQuadrant: "do" }
     });
@@ -736,7 +736,7 @@ export class MemStorage implements IStorage {
     this.createUserSetting({
       userId,
       moduleName: "principles",
-      isEnabled: true,
+      enabled: true,
       displayOrder: 5,
       settings: {}
     });
@@ -744,7 +744,7 @@ export class MemStorage implements IStorage {
     this.createUserSetting({
       userId,
       moduleName: "projects",
-      isEnabled: true,
+      enabled: true,
       displayOrder: 6,
       settings: {}
     });
@@ -752,7 +752,7 @@ export class MemStorage implements IStorage {
     this.createUserSetting({
       userId,
       moduleName: "journal",
-      isEnabled: true,
+      enabled: true,
       displayOrder: 7,
       settings: { reminderTime: "20:00" }
     });
@@ -760,7 +760,7 @@ export class MemStorage implements IStorage {
     this.createUserSetting({
       userId,
       moduleName: "mood",
-      isEnabled: true,
+      enabled: true,
       displayOrder: 8,
       settings: { factors: ["sleep", "exercise", "nutrition", "social", "work"] }
     });
@@ -768,7 +768,7 @@ export class MemStorage implements IStorage {
     this.createUserSetting({
       userId,
       moduleName: "calendar",
-      isEnabled: true,
+      enabled: true,
       displayOrder: 9,
       settings: { defaultView: "week" }
     });
@@ -776,7 +776,7 @@ export class MemStorage implements IStorage {
     this.createUserSetting({
       userId,
       moduleName: "analytics",
-      isEnabled: true,
+      enabled: true,
       displayOrder: 10,
       settings: { defaultTimeRange: "month" }
     });
