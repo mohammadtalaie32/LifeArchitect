@@ -10,7 +10,8 @@ import {
   Edit3, 
   PieChart, 
   Users,
-  LayoutGrid
+  LayoutGrid,
+  Settings
 } from "lucide-react";
 import { User } from "@shared/schema";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -75,6 +76,11 @@ export default function Sidebar({ className, user, onNavigate }: SidebarProps) {
       name: "Social Interactions",
       path: "/social-interactions",
       icon: <Users className="mr-3 h-5 w-5" />,
+    },
+    {
+      name: "Settings",
+      path: "/settings",
+      icon: <Settings className="mr-3 h-5 w-5" />,
     },
   ];
 
