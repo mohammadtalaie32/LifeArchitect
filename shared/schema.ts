@@ -17,6 +17,8 @@ export const userSettings = pgTable("user_settings", {
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   moduleName: text("module_name").notNull(),
   enabled: boolean("enabled").notNull().default(true),
+  displayOrder: integer("display_order").default(0),
+  settings: jsonb("settings").default({}),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -32,6 +34,8 @@ export const insertUserSettingsSchema = createInsertSchema(userSettings).pick({
   userId: true,
   moduleName: true,
   enabled: true,
+  displayOrder: true,
+  settings: true,
 });
 
 // Core Principles Schema
