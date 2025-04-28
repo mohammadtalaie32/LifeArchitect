@@ -7,6 +7,8 @@ import { useEffect, useState, createContext } from "react";
 import { Loader2 } from "lucide-react";
 import { login, checkAuth, logout } from "./utils/auth";
 import { User } from "@shared/schema";
+import { UserSettingsProvider } from "./contexts/UserSettingsContext";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 // Layout
 import Layout from "./components/layout/Layout";
@@ -139,25 +141,27 @@ function App() {
   return (
     <UserContext.Provider value={contextValue}>
       <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <Layout user={user}>
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/core-principles" element={<CorePrinciples />} />
-              <Route path="/goals" element={<Goals />} />
-              <Route path="/passions-projects" element={<PassionsProjects />} />
-              <Route path="/habits-rituals" element={<HabitsRituals />} />
-              <Route path="/challenges-solutions" element={<ChallengesSolutions />} />
-              <Route path="/self-analysis" element={<SelfAnalysis />} />
-              <Route path="/analytics" element={<Analytics />} />
-              <Route path="/social-interactions" element={<SocialInteractions />} />
-              <Route path="/activities" element={<Activities />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Layout>
-          <Toaster />
-        </TooltipProvider>
+        <UserSettingsProvider>
+          <TooltipProvider>
+            <Layout user={user}>
+              <Routes>
+                <Route path="/" element={<ProtectedRoute moduleName="dashboard"><Dashboard /></ProtectedRoute>} />
+                <Route path="/core-principles" element={<ProtectedRoute moduleName="principles"><CorePrinciples /></ProtectedRoute>} />
+                <Route path="/goals" element={<ProtectedRoute moduleName="goals"><Goals /></ProtectedRoute>} />
+                <Route path="/passions-projects" element={<ProtectedRoute moduleName="projects"><PassionsProjects /></ProtectedRoute>} />
+                <Route path="/habits-rituals" element={<ProtectedRoute moduleName="habits"><HabitsRituals /></ProtectedRoute>} />
+                <Route path="/challenges-solutions" element={<ProtectedRoute moduleName="challenges"><ChallengesSolutions /></ProtectedRoute>} />
+                <Route path="/self-analysis" element={<ProtectedRoute moduleName="journal"><SelfAnalysis /></ProtectedRoute>} />
+                <Route path="/analytics" element={<ProtectedRoute moduleName="analytics"><Analytics /></ProtectedRoute>} />
+                <Route path="/social-interactions" element={<ProtectedRoute moduleName="social"><SocialInteractions /></ProtectedRoute>} />
+                <Route path="/activities" element={<ProtectedRoute moduleName="activities"><Activities /></ProtectedRoute>} />
+                <Route path="/settings" element={<ProtectedRoute moduleName="settings"><Settings /></ProtectedRoute>} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Layout>
+            <Toaster />
+          </TooltipProvider>
+        </UserSettingsProvider>
       </QueryClientProvider>
     </UserContext.Provider>
   );

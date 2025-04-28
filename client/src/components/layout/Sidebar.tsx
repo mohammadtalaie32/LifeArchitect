@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { User } from "@shared/schema";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useUserSettings } from "@/contexts/UserSettingsContext";
 
 interface SidebarProps {
   className?: string;
@@ -25,64 +26,83 @@ interface SidebarProps {
 export default function Sidebar({ className, user, onNavigate }: SidebarProps) {
   const location = useLocation();
   const currentPath = location.pathname;
+  const { isModuleEnabled } = useUserSettings();
 
-  const navItems = [
+  const allNavItems = [
     {
       name: "Dashboard",
       path: "/",
       icon: <Home className="mr-3 h-5 w-5" />,
+      moduleName: "dashboard"
     },
     {
       name: "Core Principles",
       path: "/core-principles",
       icon: <BookOpen className="mr-3 h-5 w-5" />,
+      moduleName: "principles"
     },
     {
       name: "Goals",
       path: "/goals",
       icon: <CheckCircle className="mr-3 h-5 w-5" />,
+      moduleName: "goals"
     },
     {
       name: "Passions & Projects",
       path: "/passions-projects",
       icon: <BarChart2 className="mr-3 h-5 w-5" />,
+      moduleName: "projects"
     },
     {
       name: "Habits & Rituals",
       path: "/habits-rituals",
       icon: <Calendar className="mr-3 h-5 w-5" />,
+      moduleName: "habits"
     },
     {
       name: "Activities",
       path: "/activities",
       icon: <LayoutGrid className="mr-3 h-5 w-5" />,
+      moduleName: "activities"
     },
     {
       name: "Challenges & Solutions",
       path: "/challenges-solutions",
       icon: <Lightbulb className="mr-3 h-5 w-5" />,
+      moduleName: "challenges"
     },
     {
       name: "Self-Analysis",
       path: "/self-analysis",
       icon: <Edit3 className="mr-3 h-5 w-5" />,
+      moduleName: "journal"
     },
     {
       name: "Analytics",
       path: "/analytics",
       icon: <PieChart className="mr-3 h-5 w-5" />,
+      moduleName: "analytics"
     },
     {
       name: "Social Interactions",
       path: "/social-interactions",
       icon: <Users className="mr-3 h-5 w-5" />,
+      moduleName: "social"
     },
     {
       name: "Settings",
       path: "/settings",
       icon: <Settings className="mr-3 h-5 w-5" />,
+      moduleName: "settings"
     },
   ];
+  
+  // Always show Dashboard and Settings, filter other items based on user settings
+  const navItems = allNavItems.filter(item => 
+    item.moduleName === "dashboard" || 
+    item.moduleName === "settings" || 
+    isModuleEnabled(item.moduleName)
+  );
 
   return (
     <aside 
