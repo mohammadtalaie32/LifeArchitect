@@ -132,6 +132,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Health check endpoint for container monitoring
+  app.get("/api/health", (req, res) => {
+    res.status(200).json({ 
+      status: "ok",
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      memoryUsage: process.memoryUsage()
+    });
+  });
+
   // Get current date in ISO format for easier date comparison
   app.get("/api/current-date", (req, res) => {
     res.json({ date: new Date().toISOString() });
