@@ -10,7 +10,10 @@ import {
   insertHabitEntrySchema,
   insertJournalEntrySchema,
   insertMoodEntrySchema,
-  insertEventSchema
+  insertEventSchema,
+  insertActivitySchema,
+  insertTagSchema,
+  insertActivityTagSchema
 } from "@shared/schema";
 import session from "express-session";
 import passport from "passport";
@@ -547,6 +550,191 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     const result = await storage.deleteEvent(id);
     res.json({ message: "Event deleted successfully" });
+  });
+  
+  // Activities routes
+  app.get("/api/activities", isAuthenticated, async (req, res) => {
+    const userId = (req.user as any).id;
+    const activities = await storage.getActivitiesByUserId(userId);
+    res.json(activities);
+  });
+
+  app.get("/api/activities/:id", isAuthenticated, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const activity = await storage.getActivityById(id);
+    
+    if (!activity) {
+      return res.status(404).json({ message: "Activity not found" });
+    }
+    
+    const userId = (req.user as any).id;
+    if (activity.userId !== userId) {
+      return res.status(403).json({ message: "Not authorized to view this activity" });
+    }
+    
+    res.json(activity);
+  });
+
+  app.post("/api/activities", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const activityData = insertActivitySchema.parse({ ...req.body, userId });
+      const activity = await storage.createActivity(activityData);
+      res.status(201).json(activity);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid activity data", error });
+    }
+  });
+
+  app.put("/api/activities/:id", isAuthenticated, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const userId = (req.user as any).id;
+    
+    const activity = await storage.getActivityById(id);
+    if (!activity) {
+      return res.status(404).json({ message: "Activity not found" });
+    }
+    
+    if (activity.userId !== userId) {
+      return res.status(403).json({ message: "Not authorized to update this activity" });
+    }
+    
+    try {
+      const updatedActivity = await storage.updateActivity(id, req.body);
+      res.json(updatedActivity);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid activity data", error });
+    }
+  });
+
+  app.delete("/api/activities/:id", isAuthenticated, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const activity = await storage.getActivityById(id);
+    
+    if (!activity) {
+      return res.status(404).json({ message: "Activity not found" });
+    }
+    
+    const userId = (req.user as any).id;
+    if (activity.userId !== userId) {
+      return res.status(403).json({ message: "Not authorized to delete this activity" });
+    }
+    
+    const result = await storage.deleteActivity(id);
+    res.json({ message: "Activity deleted successfully" });
+  });
+
+  // Tags routes
+  app.get("/api/tags", isAuthenticated, async (req, res) => {
+    const userId = (req.user as any).id;
+    const tags = await storage.getTagsByUserId(userId);
+    res.json(tags);
+  });
+
+  app.post("/api/tags", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const tagData = insertTagSchema.parse({ ...req.body, userId });
+      const tag = await storage.createTag(tagData);
+      res.status(201).json(tag);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid tag data", error });
+    }
+  });
+
+  app.put("/api/tags/:id", isAuthenticated, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const userId = (req.user as any).id;
+    
+    const tag = await storage.getTagById(id);
+    if (!tag) {
+      return res.status(404).json({ message: "Tag not found" });
+    }
+    
+    if (tag.userId !== userId) {
+      return res.status(403).json({ message: "Not authorized to update this tag" });
+    }
+    
+    try {
+      const updatedTag = await storage.updateTag(id, req.body);
+      res.json(updatedTag);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid tag data", error });
+    }
+  });
+
+  app.delete("/api/tags/:id", isAuthenticated, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const tag = await storage.getTagById(id);
+    
+    if (!tag) {
+      return res.status(404).json({ message: "Tag not found" });
+    }
+    
+    const userId = (req.user as any).id;
+    if (tag.userId !== userId) {
+      return res.status(403).json({ message: "Not authorized to delete this tag" });
+    }
+    
+    const result = await storage.deleteTag(id);
+    res.json({ message: "Tag deleted successfully" });
+  });
+
+  // Activity Tags routes
+  app.get("/api/activities/:activityId/tags", isAuthenticated, async (req, res) => {
+    const activityId = parseInt(req.params.activityId);
+    const activity = await storage.getActivityById(activityId);
+    
+    if (!activity) {
+      return res.status(404).json({ message: "Activity not found" });
+    }
+    
+    const userId = (req.user as any).id;
+    if (activity.userId !== userId) {
+      return res.status(403).json({ message: "Not authorized to view tags for this activity" });
+    }
+    
+    const activityTags = await storage.getActivityTagsByActivityId(activityId);
+    res.json(activityTags);
+  });
+
+  app.post("/api/activity-tags", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const { activityId, tagId } = req.body;
+      
+      // Check if the activity belongs to the user
+      const activity = await storage.getActivityById(activityId);
+      if (!activity || activity.userId !== userId) {
+        return res.status(403).json({ message: "Not authorized to tag this activity" });
+      }
+      
+      // Check if the tag belongs to the user
+      const tag = await storage.getTagById(tagId);
+      if (!tag || tag.userId !== userId) {
+        return res.status(403).json({ message: "Not authorized to use this tag" });
+      }
+      
+      const activityTag = await storage.createActivityTag({ activityId, tagId });
+      res.status(201).json(activityTag);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid activity tag data", error });
+    }
+  });
+
+  app.delete("/api/activity-tags/:activityId/:tagId", isAuthenticated, async (req, res) => {
+    const activityId = parseInt(req.params.activityId);
+    const tagId = parseInt(req.params.tagId);
+    const userId = (req.user as any).id;
+    
+    // Check if the activity belongs to the user
+    const activity = await storage.getActivityById(activityId);
+    if (!activity || activity.userId !== userId) {
+      return res.status(403).json({ message: "Not authorized to untag this activity" });
+    }
+    
+    const result = await storage.deleteActivityTag(activityId, tagId);
+    res.json({ message: "Activity tag removed successfully" });
   });
   
   // Create HTTP server
