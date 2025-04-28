@@ -27,7 +27,15 @@ git clone <repository-url>
 cd life-architect
 ```
 
-2. **Start the Docker containers:**
+2. **Create an .env file (optional):**
+   
+   Copy the example environment file and modify as needed:
+
+```bash
+cp .env.example .env
+```
+
+3. **Start the Docker containers:**
 
 ```bash
 docker-compose up -d
@@ -35,13 +43,13 @@ docker-compose up -d
 
 This command starts the application and PostgreSQL database in detached mode.
 
-3. **View application logs:**
+4. **View application logs:**
 
 ```bash
 docker-compose logs -f app
 ```
 
-4. **Access the application:**
+5. **Access the application:**
 
 Open your browser and navigate to `http://localhost:5000`
 
@@ -49,6 +57,48 @@ Open your browser and navigate to `http://localhost:5000`
 
 - The application code is mounted as a volume in the Docker container, so changes you make to the code will be reflected in the running application.
 - Database data is persisted in a Docker volume named `postgres_data`.
+- The Docker setup includes PostgreSQL client tools, so you can run database commands within the container if needed.
+
+### Database Operations
+
+- **Connect to the database:**
+
+```bash
+docker-compose exec db psql -U postgres -d life_architect
+```
+
+- **Create a database backup:**
+
+```bash
+docker-compose exec app ./scripts/backup-db.sh
+```
+
+- **Restore from a backup:**
+
+```bash
+docker-compose exec app ./scripts/restore-db.sh /backups/your-backup-file.sql.gz
+```
+
+### Health Checks
+
+The Docker setup includes health checks for all services. To check the status:
+
+```bash
+docker-compose ps
+```
+
+### Production Deployment
+
+For production deployment, use the production configuration:
+
+```bash
+docker-compose -f docker-compose.prod.yml up -d
+```
+
+Before running in production, be sure to:
+1. Generate SSL certificates or configure real certificates
+2. Set secure passwords in environment variables
+3. Configure proper backup strategy
 
 ### Stopping the Containers
 
