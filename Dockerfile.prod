@@ -17,6 +17,10 @@ FROM node:20-slim as production
 
 WORKDIR /app
 
+# Install PostgreSQL client for DB operations
+RUN apt-get update && apt-get install -y postgresql-client gzip && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
 # Copy package.json files and install only production dependencies
 COPY package*.json ./
 RUN npm ci --only=production
@@ -26,6 +30,17 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/shared ./shared
 COPY --from=builder /app/server ./server
 
+# Copy scripts
+COPY scripts ./scripts
+COPY docker-init-prod.sh ./
+RUN chmod +x docker-init-prod.sh && \
+    chmod +x scripts/wait-for-db.sh && \
+    chmod +x scripts/backup-db.sh && \
+    chmod +x scripts/restore-db.sh
+
+# Create backups directory
+RUN mkdir -p /backups
+
 # Expose the port
 EXPOSE 5000
 
@@ -33,4 +48,4 @@ EXPOSE 5000
 ENV NODE_ENV=production
 
 # Start the application
-CMD ["node", "dist/server/index.js"]
+CMD ["./docker-init-prod.sh"]
