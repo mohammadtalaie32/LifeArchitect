@@ -1539,6 +1539,87 @@ export class DatabaseStorage implements IStorage {
         
         const userId = demoUser.id;
         
+        // Initialize default user settings for modules
+        await this.createUserSetting({
+          userId,
+          moduleName: "dashboard",
+          enabled: true,
+          displayOrder: 1,
+          settings: { widgets: ["goals", "habits", "activities", "mood"] }
+        });
+        
+        await this.createUserSetting({
+          userId,
+          moduleName: "goals",
+          enabled: true,
+          displayOrder: 2,
+          settings: { defaultView: "list" }
+        });
+        
+        await this.createUserSetting({
+          userId,
+          moduleName: "habits",
+          enabled: true,
+          displayOrder: 3,
+          settings: { reminderTime: "08:00" }
+        });
+        
+        await this.createUserSetting({
+          userId,
+          moduleName: "activities",
+          enabled: true,
+          displayOrder: 4,
+          settings: { defaultQuadrant: "do" }
+        });
+        
+        await this.createUserSetting({
+          userId,
+          moduleName: "principles",
+          enabled: true,
+          displayOrder: 5,
+          settings: {}
+        });
+        
+        await this.createUserSetting({
+          userId,
+          moduleName: "projects",
+          enabled: true,
+          displayOrder: 6,
+          settings: {}
+        });
+        
+        await this.createUserSetting({
+          userId,
+          moduleName: "journal",
+          enabled: true,
+          displayOrder: 7,
+          settings: { reminderTime: "20:00" }
+        });
+        
+        await this.createUserSetting({
+          userId,
+          moduleName: "mood",
+          enabled: true,
+          displayOrder: 8,
+          settings: { factors: ["sleep", "exercise", "nutrition", "social", "work"] }
+        });
+        
+        await this.createUserSetting({
+          userId,
+          moduleName: "calendar",
+          enabled: true,
+          displayOrder: 9,
+          settings: { defaultView: "week" }
+        });
+        
+        await this.createUserSetting({
+          userId,
+          moduleName: "analytics",
+          enabled: true,
+          displayOrder: 10,
+          settings: { defaultTimeRange: "month" }
+        });
+        
         // Add core principles
         await this.createPrinciple({
           userId,
