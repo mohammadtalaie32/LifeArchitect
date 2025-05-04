@@ -12,7 +12,7 @@ npm run db:push
 # Initialize sample data if needed
 if [[ "$INIT_SAMPLE_DATA" == "true" ]]; then
   echo "Initializing sample data..."
-  node scripts/init-data.js
+  npx tsx scripts/init-data.ts
 fi
 
 # Start the application

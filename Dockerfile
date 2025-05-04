@@ -10,7 +10,8 @@ RUN apt-get update && apt-get install -y postgresql-client gzip curl && \
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci
+RUN npm ci && \
+    npm install -D ts-node
 
 # Copy the rest of the application
 COPY . .
