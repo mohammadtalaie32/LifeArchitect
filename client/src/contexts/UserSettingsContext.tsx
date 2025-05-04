@@ -35,7 +35,7 @@ export const UserSettingsProvider = ({ children }: UserSettingsProviderProps) =>
     if (!data) return true; // If settings haven't loaded yet, default to showing everything
     
     const moduleSetting = data.find(setting => setting.moduleName === moduleName);
-    return moduleSetting ? moduleSetting.enabled : false;
+    return moduleSetting ? moduleSetting.enabled : true; // Default to enabled if no setting exists
   };
 
   const getModuleSetting = (moduleName: string, settingKey: string): any => {

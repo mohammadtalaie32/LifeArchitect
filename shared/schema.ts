@@ -1,6 +1,31 @@
-import { pgTable, text, serial, integer, boolean, date, timestamp, jsonb, primaryKey, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, date, timestamp, jsonb, primaryKey, varchar, unique } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+
+// Modules Schema
+export const modules = pgTable("modules", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  description: text("description").notNull(),
+  icon: text("icon"),
+  isSystem: boolean("is_system").notNull().default(true),
+  displayOrder: integer("display_order").notNull().default(0),
+  defaultSettings: jsonb("default_settings").default({}),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type Module = typeof modules.$inferSelect;
+export type InsertModule = typeof modules.$inferInsert;
+
+export const insertModuleSchema = createInsertSchema(modules).pick({
+  name: true,
+  description: true,
+  icon: true,
+  isSystem: true,
+  displayOrder: true,
+  defaultSettings: true,
+});
 
 // User Schema
 export const users = pgTable("users", {
@@ -15,12 +40,16 @@ export const users = pgTable("users", {
 export const userSettings = pgTable("user_settings", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  moduleName: text("module_name").notNull(),
+  moduleId: integer("module_id").notNull().references(() => modules.id, { onDelete: "cascade" }),
   enabled: boolean("enabled").notNull().default(true),
   displayOrder: integer("display_order").default(0),
   settings: jsonb("settings").default({}),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => {
+  return {
+    uniqueUserModule: unique().on(table.userId, table.moduleId),
+  };
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -32,7 +61,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
 
 export const insertUserSettingsSchema = createInsertSchema(userSettings).pick({
   userId: true,
-  moduleName: true,
+  moduleId: true,
   enabled: true,
   displayOrder: true,
   settings: true,
@@ -283,7 +312,7 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 
 export type UserSettings = typeof userSettings.$inferSelect;
-export type InsertUserSettings = z.infer<typeof insertUserSettingsSchema>;
+export type InsertUserSettings = typeof userSettings.$inferInsert;
 
 export type Principle = typeof principles.$inferSelect;
 export type InsertPrinciple = z.infer<typeof insertPrincipleSchema>;

@@ -1,32 +1,51 @@
-import { ReactNode } from 'react';
-import { Navigate } from 'react-router-dom';
-import { useUserSettings } from '@/contexts/UserSettingsContext';
-import NotFound from '@/pages/not-found';
+import { Navigate, useLocation } from "react-router-dom";
+import { useUserContext } from "../contexts/UserContext";
+import { Loader2 } from "lucide-react";
 
 interface ProtectedRouteProps {
-  children: ReactNode;
+  children: React.ReactNode;
   moduleName: string;
 }
 
 export default function ProtectedRoute({ children, moduleName }: ProtectedRouteProps) {
-  const { isModuleEnabled, isLoading } = useUserSettings();
+  const { user, isLoading, error } = useUserContext();
+  const location = useLocation();
 
-  // Always allow access to dashboard and settings
-  if (moduleName === 'dashboard' || moduleName === 'settings') {
-    return <>{children}</>;
-  }
-
-  // While the settings are loading, render nothing
   if (isLoading) {
-    return null;
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-background">
+        <Loader2 className="h-12 w-12 text-primary animate-spin" />
+      </div>
+    );
   }
 
-  // Check if the module is enabled for this user
-  const isEnabled = isModuleEnabled(moduleName);
-  
-  if (!isEnabled) {
-    // Redirect to not found page if the module is disabled
-    return <NotFound />;
+  if (error) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-background">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">Authentication Error</h1>
+          <p className="text-slate-600">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  // Check if user has access to the module
+  const hasModuleAccess = true; // TODO: Implement module access check based on user settings
+
+  if (!hasModuleAccess) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-background">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">Access Denied</h1>
+          <p className="text-slate-600">You don't have access to this module.</p>
+        </div>
+      </div>
+    );
   }
 
   return <>{children}</>;

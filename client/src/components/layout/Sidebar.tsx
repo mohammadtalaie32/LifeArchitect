@@ -16,6 +16,7 @@ import {
 import { User } from "@shared/schema";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUserSettings } from "@/contexts/UserSettingsContext";
+import { useUserContext } from "@/contexts/UserContext";
 
 interface SidebarProps {
   className?: string;
@@ -27,6 +28,7 @@ export default function Sidebar({ className, user, onNavigate }: SidebarProps) {
   const location = useLocation();
   const currentPath = location.pathname;
   const { isModuleEnabled } = useUserSettings();
+  const { logout, isLoading, error } = useUserContext();
 
   const allNavItems = [
     {
@@ -107,7 +109,7 @@ export default function Sidebar({ className, user, onNavigate }: SidebarProps) {
   return (
     <aside 
       className={cn(
-        "md:w-64 flex-col md:fixed md:inset-y-0 bg-white border-r border-slate-200 z-10",
+        "md:w-64 flex-col  md:inset-y-0 bg-white border-r border-slate-200 z-10",
         className
       )}
     >
@@ -146,15 +148,30 @@ export default function Sidebar({ className, user, onNavigate }: SidebarProps) {
               <Avatar>
                 <AvatarImage src="" />
                 <AvatarFallback className="bg-primary-100 text-primary-800">
-                  {user.name ? user.name.charAt(0).toUpperCase() : user.username.charAt(0).toUpperCase()}
+                  {user?.name ? user.name.charAt(0).toUpperCase() : user?.username.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
             </div>
             <div className="ml-3">
-              <p className="text-sm font-medium text-slate-700">{user.name || user.username}</p>
-              <p className="text-xs text-slate-500">{user.email || ""}</p>
+              <p className="text-sm font-medium text-slate-700">{user?.name || user?.username}</p>
+              <p className="text-xs text-slate-500">{user?.email || ""}</p>
             </div>
           </div>
+        </div>
+
+        <div className="p-4 border-t">
+          {error && (
+            <div className="mb-4 text-red-600 text-sm font-medium">
+              {error}
+            </div>
+          )}
+          <button
+            onClick={logout}
+            className="w-full py-2 px-4 bg-red-500 text-white rounded hover:bg-red-600 transition"
+            disabled={isLoading}
+          >
+            Logout
+          </button>
         </div>
       </div>
     </aside>

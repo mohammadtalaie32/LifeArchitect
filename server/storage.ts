@@ -781,6 +781,22 @@ export class MemStorage implements IStorage {
       settings: { defaultTimeRange: "month" }
     });
     
+    this.createUserSetting({
+      userId,
+      moduleName: "challenges",
+      enabled: true,
+      displayOrder: 11,
+      settings: {}
+    });
+    
+    this.createUserSetting({
+      userId,
+      moduleName: "social",
+      enabled: true,
+      displayOrder: 12,
+      settings: {}
+    });
+    
     // Add core principles
     this.createPrinciple({
       userId,
@@ -1618,6 +1634,22 @@ export class DatabaseStorage implements IStorage {
           enabled: true,
           displayOrder: 10,
           settings: { defaultTimeRange: "month" }
+        });
+        
+        await this.createUserSetting({
+          userId,
+          moduleName: "challenges",
+          enabled: true,
+          displayOrder: 11,
+          settings: {}
+        });
+        
+        await this.createUserSetting({
+          userId,
+          moduleName: "social",
+          enabled: true,
+          displayOrder: 12,
+          settings: {}
         });
         
         // Add core principles

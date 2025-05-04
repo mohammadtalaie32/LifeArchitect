@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useUser } from "@/hooks/useAuth";
+import { useUserContext } from "@/contexts/UserContext";
 import { 
   CheckCircle, 
   BarChart2, 
@@ -23,27 +23,27 @@ import MoodTracker from "@/components/dashboard/MoodTracker";
 import EventItem from "@/components/dashboard/EventItem";
 import { format } from "date-fns";
 import { useState } from "react";
+import { Goal, Habit, HabitEntry, JournalEntry, Principle, Event } from "@shared/schema";
 
 export default function Dashboard() {
-  const { user } = useUser();
+  const { user } = useUserContext();
   const [currentDate, setCurrentDate] = useState(new Date());
   
   // Fetch data from API
-  const { data: principles } = useQuery({
+  const { data: principles = [] } = useQuery<Principle[]>({
     queryKey: ['/api/principles'],
   });
   
-  const { data: goals } = useQuery({
+  const { data: goals = [] } = useQuery<Goal[]>({
     queryKey: ['/api/goals'],
   });
   
-  const { data: habits } = useQuery({
+  const { data: habits = [] } = useQuery<Habit[]>({
     queryKey: ['/api/habits'],
   });
   
-  const { data: habitEntries } = useQuery({
+  const { data: habitEntries = [] } = useQuery<HabitEntry[]>({
     queryKey: ['/api/habit-entries'],
-    // Pass current date as query param
     queryFn: async () => {
       const res = await fetch(`/api/habit-entries?date=${currentDate.toISOString()}`);
       if (!res.ok) throw new Error('Failed to fetch habit entries');
@@ -51,11 +51,11 @@ export default function Dashboard() {
     },
   });
   
-  const { data: journalEntries } = useQuery({
+  const { data: journalEntries = [] } = useQuery<JournalEntry[]>({
     queryKey: ['/api/journal-entries'],
   });
   
-  const { data: events } = useQuery({
+  const { data: events = [] } = useQuery<Event[]>({
     queryKey: ['/api/events'],
   });
 

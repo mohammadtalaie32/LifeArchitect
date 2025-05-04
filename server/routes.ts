@@ -34,7 +34,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       secret: process.env.SESSION_SECRET || "life-architect-secret",
       resave: false,
       saveUninitialized: false,
-      cookie: { secure: false, maxAge: 86400000 }, // 24 hours
+      cookie: { 
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        sameSite: 'strict',
+        maxAge: 86400000 // 24 hours
+      },
       store: new MemoryStoreSession({
         checkPeriod: 86400000 // Prune expired entries every 24h
       })

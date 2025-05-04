@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,12 +15,21 @@ import { Input } from "@/components/ui/input";
 type UserSetting = {
   id: number;
   userId: number;
-  moduleName: string;
+  moduleId: number;
   enabled: boolean;
   displayOrder: number;
   settings: Record<string, any>;
   createdAt: string | Date;
   updatedAt: string | Date;
+  module: {
+    id: number;
+    name: string;
+    description: string;
+    icon: string;
+    isSystem: boolean;
+    displayOrder: number;
+    defaultSettings: Record<string, any>;
+  };
 };
 
 const Settings = () => {
@@ -34,20 +43,20 @@ const Settings = () => {
   const { toast } = useToast();
   
   // Initialize module states when data is loaded
-  useState(() => {
+  useEffect(() => {
     if (userSettings) {
       const states: Record<string, boolean> = {};
       const settings: Record<string, Record<string, any>> = {};
       
       userSettings.forEach((setting) => {
-        states[setting.moduleName] = setting.enabled;
-        settings[setting.moduleName] = setting.settings || {};
+        states[setting.module.name] = setting.enabled;
+        settings[setting.module.name] = setting.settings || {};
       });
       
       setModuleStates(states);
       setModuleSettings(settings);
     }
-  });
+  }, [userSettings]);
   
   const updateSettingMutation = useMutation({
     mutationFn: async ({ id, enabled, settings }: { id: number, enabled?: boolean, settings?: Record<string, any> }) => {
@@ -82,8 +91,8 @@ const Settings = () => {
   });
   
   const handleModuleToggle = (setting: UserSetting) => {
-    const newState = !moduleStates[setting.moduleName];
-    setModuleStates({ ...moduleStates, [setting.moduleName]: newState });
+    const newState = !moduleStates[setting.module.name];
+    setModuleStates({ ...moduleStates, [setting.module.name]: newState });
     
     updateSettingMutation.mutate({
       id: setting.id,
@@ -95,10 +104,10 @@ const Settings = () => {
     if (!userSettings) return;
     
     userSettings.forEach((setting) => {
-      if (moduleSettings[setting.moduleName]) {
+      if (moduleSettings[setting.module.name]) {
         updateSettingMutation.mutate({
           id: setting.id,
-          settings: moduleSettings[setting.moduleName]
+          settings: moduleSettings[setting.module.name]
         });
       }
     });
@@ -115,9 +124,9 @@ const Settings = () => {
   };
   
   const renderModuleSettings = (setting: UserSetting) => {
-    const moduleConfig = moduleSettings[setting.moduleName] || {};
+    const moduleConfig = moduleSettings[setting.module.name] || {};
     
-    switch (setting.moduleName) {
+    switch (setting.module.name) {
       case "dashboard":
         return (
           <div className="space-y-4">
@@ -133,7 +142,7 @@ const Settings = () => {
                       ? [...currentWidgets, widget]
                       : currentWidgets.filter(w => w !== widget);
                     
-                    handleSettingChange(setting.moduleName, "widgets", newWidgets);
+                    handleSettingChange(setting.module.name, "widgets", newWidgets);
                   }}
                 />
                 <Label htmlFor={`widget-${widget}`} className="capitalize">{widget}</Label>
@@ -147,12 +156,12 @@ const Settings = () => {
         return (
           <div className="space-y-4">
             <div>
-              <Label htmlFor={`reminder-${setting.moduleName}`}>Reminder Time</Label>
+              <Label htmlFor={`reminder-${setting.module.name}`}>Reminder Time</Label>
               <Input 
-                id={`reminder-${setting.moduleName}`}
+                id={`reminder-${setting.module.name}`}
                 type="time"
                 value={moduleConfig.reminderTime || ""}
-                onChange={(e) => handleSettingChange(setting.moduleName, "reminderTime", e.target.value)}
+                onChange={(e) => handleSettingChange(setting.module.name, "reminderTime", e.target.value)}
                 className="mt-1 w-full"
               />
             </div>
@@ -167,7 +176,7 @@ const Settings = () => {
               <select
                 id="default-time-range"
                 value={moduleConfig.defaultTimeRange || "month"}
-                onChange={(e) => handleSettingChange(setting.moduleName, "defaultTimeRange", e.target.value)}
+                onChange={(e) => handleSettingChange(setting.module.name, "defaultTimeRange", e.target.value)}
                 className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md"
               >
                 <option value="week">Week</option>
@@ -228,21 +237,21 @@ const Settings = () => {
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <div>
-                      <CardTitle className="capitalize">{setting.moduleName}</CardTitle>
+                      <CardTitle className="capitalize">{setting.module.name}</CardTitle>
                       <CardDescription>
-                        {moduleDescriptions[setting.moduleName] || ""}
+                        {setting.module.description}
                       </CardDescription>
                     </div>
                     <Switch
-                      checked={moduleStates[setting.moduleName] || false}
+                      checked={moduleStates[setting.module.name] || false}
                       onCheckedChange={() => handleModuleToggle(setting)}
                     />
                   </div>
                 </CardHeader>
                 <CardContent>
                   <div className="pt-2">
-                    <Badge variant={moduleStates[setting.moduleName] ? "default" : "outline"}>
-                      {moduleStates[setting.moduleName] ? "Enabled" : "Disabled"}
+                    <Badge variant={moduleStates[setting.module.name] ? "default" : "outline"}>
+                      {moduleStates[setting.module.name] ? "Enabled" : "Disabled"}
                     </Badge>
                   </div>
                 </CardContent>
@@ -253,14 +262,14 @@ const Settings = () => {
         
         <TabsContent value="configuration">
           <div className="space-y-8">
-            {userSettings?.filter(setting => moduleStates[setting.moduleName])
-              .sort((a, b) => a.displayOrder - b.displayOrder)
+            {userSettings?.filter(setting => moduleStates[setting.module.name])
+              .sort((a, b) => a.module.displayOrder - b.module.displayOrder)
               .map((setting) => (
                 <Card key={setting.id}>
                   <CardHeader>
-                    <CardTitle className="capitalize">{setting.moduleName}</CardTitle>
+                    <CardTitle className="capitalize">{setting.module.name}</CardTitle>
                     <CardDescription>
-                      {moduleDescriptions[setting.moduleName] || ""}
+                      {setting.module.description}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -273,19 +282,6 @@ const Settings = () => {
       </Tabs>
     </div>
   );
-};
-
-const moduleDescriptions: Record<string, string> = {
-  dashboard: "Overview of your personal development journey",
-  goals: "Track and manage your short and long-term goals",
-  habits: "Build and maintain positive daily routines",
-  activities: "Organize tasks using the Eisenhower matrix",
-  principles: "Define your core values and guiding principles",
-  projects: "Manage complex projects with multiple tasks",
-  journal: "Document your thoughts and reflections",
-  mood: "Track your emotional well-being over time",
-  calendar: "Plan and visualize your schedule",
-  analytics: "Insights and visualizations of your progress"
 };
 
 export default Settings;
